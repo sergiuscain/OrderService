@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OrderService.Application.Orders.Common;
 using OrderService.Application.Orders.Services;
 using OrderService.Infrastructure.Http;
 using OrderService.Infrastructure.Persistence;
@@ -11,6 +12,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddHttpClient<IInventoryService, InventoryServiceClient>();
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(OrderDto).Assembly));
 
 var app = builder.Build();
 app.UseSwagger();
