@@ -31,7 +31,7 @@ public class InventoryServiceClient : IInventoryService
             .Select(kv => new { productId = kv.Key, quantity = kv.Value })
             .ToList();
 
-        using var response = await _http.PostAsJsonAsync(url, payload, ct);
+        using var response = await _http.PostAsJsonAsync(url, new { items = payload }, ct);
         return response.IsSuccessStatusCode;
     }
 
@@ -43,7 +43,7 @@ public class InventoryServiceClient : IInventoryService
             .Select(kv => new { productId = kv.Key, quantity = kv.Value })
             .ToList();
 
-        using var response = await _http.PostAsJsonAsync(url, payload, ct);
+        using var response = await _http.PostAsJsonAsync(url, new { items = payload }, ct);
         response.EnsureSuccessStatusCode();
     }
 }

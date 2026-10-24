@@ -5,5 +5,6 @@ public enum OrderStatus
     Pending = 0,
     Confirmed = 1,
     Cancelled = 2,
-    Done = 3,
+    Failed = 3,
+    Done = 4,
 }
