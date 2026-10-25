@@ -1,10 +1,13 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrderService.Application.Orders.Commands.CancelOrder;
 using OrderService.Application.Orders.Commands.CreateOrder;
 using OrderService.Application.Orders.Common;
 using OrderService.Application.Orders.Queries.GetOrderById;
 using OrderService.Application.Orders.Queries.GetOrders;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace OrderService.Api.Controllers;
 
@@ -34,28 +37,24 @@ public class OrdersController : ControllerBase
         return order is null ? NotFound() : Ok(order);
     }
 
-    /// <summary>Создать заказ.</summary>
-    /// <remarks>
-    /// Проверяет наличие товаров в InventoryService, резервирует остатки
-    /// и сохраняет заказ со снапшотом цены/имени/SKU на момент оформления.
-    /// Если хотя бы одного товара не хватает — возвращает 500 с текстом ошибки.
-    /// </remarks>
-    /// <response code="201">Заказ создан, в теле — его идентификатор.</response>
-    /// <response code="500">Ошибка валидации или резервирования.</response>
-    [HttpPost]
+    /// <summary>Создать заказ. Требует аутентификации; customerId берётся из токена.</summary>
+    /// <response code="201">Заказ создан.</response>
+    /// <response code="400">Ошибка валидации или недостаточно остатков.</response>
+    /// <response code="401">Токен отсутствует или невалиден.</response>
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<Guid>> Create(
-    [FromBody] CreateOrderCommand command, CancellationToken ct)
+        [FromBody] CreateOrderItemsRequest body, CancellationToken ct)
     {
-        try
-        {
-            var id = await _mediator.Send(command, ct);
-            return CreatedAtAction(nameof(GetById), new { id }, id);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+        if (!Guid.TryParse(sub, out var customerId))
+            return Unauthorized(new { error = "Invalid user identifier in token." });
+
+        var command = new CreateOrderCommand(customerId, body.Items);
+        var id = await _mediator.Send(command, ct);
+        return CreatedAtAction(nameof(GetById), new { id }, id);
     }
 
     /// <summary>Отменить заказ и снять резерв в InventoryService.</summary>
