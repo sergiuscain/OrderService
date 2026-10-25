@@ -13,10 +13,15 @@ public sealed class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery
 
     public async Task<OrderDto?> Handle(GetOrderByIdQuery request, CancellationToken ct)
     {
-        return await _db.Orders
+        var query = _db.Orders
             .AsNoTracking()
             .Include(o => o.Items)
-            .Where(o => o.Id == request.Id)
+            .Where(o => o.Id == request.Id);
+
+        if (!request.IsAdmin)
+            query = query.Where(o => o.CustomerId == request.UserId);
+
+        return await query
             .Select(o => new OrderDto(
                 o.Id,
                 o.CustomerId,

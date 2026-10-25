@@ -3,4 +3,4 @@ using OrderService.Application.Orders.Common;
 
 namespace OrderService.Application.Orders.Queries.GetOrders;
 
-public record GetOrdersQuery : IRequest<IReadOnlyList<OrderDto>>;
+public record GetOrdersQuery(Guid UserId, bool IsAdmin) : IRequest<IReadOnlyList<OrderDto>>;

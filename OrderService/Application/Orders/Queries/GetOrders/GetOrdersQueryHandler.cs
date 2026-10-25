@@ -13,8 +13,12 @@ public sealed class GetOrdersQueryHandler : IRequestHandler<GetOrdersQuery, IRea
 
     public async Task<IReadOnlyList<OrderDto>> Handle(GetOrdersQuery request, CancellationToken ct)
     {
-        return await _db.Orders
-            .AsNoTracking()
+        var query = _db.Orders.AsNoTracking();
+
+        if (!request.IsAdmin)
+            query = query.Where(o => o.CustomerId == request.UserId);
+
+        return await query
             .Include(o => o.Items)
             .OrderByDescending(o => o.CreatedAt)
             .Select(o => new OrderDto(
