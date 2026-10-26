@@ -19,21 +19,32 @@ public sealed class CancelOrderCommandHandler : IRequestHandler<CancelOrderComma
 
     public async Task Handle(CancelOrderCommand request, CancellationToken ct)
     {
-        var order = await _db.Orders
+        var query = _db.Orders
             .Include(o => o.Items)
-            .FirstOrDefaultAsync(o => o.Id == request.OrderId, ct)
-            ?? throw new InvalidOperationException($"Order {request.OrderId} not found.");
+            .Where(o => o.Id == request.OrderId);
+
+        if (!request.IsAdmin)
+            query = query.Where(o => o.CustomerId == request.UserId);
+
+        var order = await query.FirstOrDefaultAsync(ct)
+            ?? throw new ArgumentException($"Order {request.OrderId} not found.");
 
         if (order.Status == OrderStatus.Cancelled)
-            return;
+            return; // идемпотентно
 
-        // Снимаем резерв, только если он был выставлен.
-        if (order.Status is OrderStatus.Confirmed or OrderStatus.Pending)
+        // Снимаем резерв, только если он был выставлен
+        // (Pending — резерв не прошёл, снимать нечего; Done — товар уже списан, отменять нельзя).
+        if (order.Status == OrderStatus.Confirmed)
         {
             var quantities = order.Items
                 .GroupBy(i => i.ProductId)
                 .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
             await _inventory.ReleaseAsync(quantities, ct);
+        }
+        else if (order.Status == OrderStatus.Done)
+        {
+            throw new ArgumentException("Cannot cancel a completed order.");
         }
 
         order.Status = OrderStatus.Cancelled;

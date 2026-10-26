@@ -2,4 +2,4 @@
 
 namespace OrderService.Application.Orders.Commands.CancelOrder;
 
-public record CancelOrderCommand(Guid OrderId) : IRequest;
+public record CancelOrderCommand(Guid OrderId, Guid UserId, bool IsAdmin) : IRequest;

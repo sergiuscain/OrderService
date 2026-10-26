@@ -88,16 +88,26 @@ public class OrdersController : ControllerBase
         }
     }
 
-    /// <summary>Отменить заказ и снять резерв в InventoryService.</summary>
-    /// <param name="id">Идентификатор заказа.</param>
+    /// <summary>Отменить заказ и снять резерв. Только владелец или админ.</summary>
     /// <response code="204">Заказ отменён.</response>
-    /// <response code="500">Заказ не найден.</response>
+    /// <response code="400">Заказ не найден, не принадлежит пользователю или уже завершён.</response>
+    /// <response code="401">Токен отсутствует или невалиден.</response>
     [Authorize]
     [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken ct)
     {
-        await _mediator.Send(new CancelOrderCommand(id), ct);
-        return NoContent();
+        if (!TryGetCurrentUser(out var userId, out var isAdmin))
+            return Unauthorized(new { error = "Invalid user identifier in token." });
+
+        try
+        {
+            await _mediator.Send(new CancelOrderCommand(id, userId, isAdmin), ct);
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
     private bool TryGetCurrentUser(out Guid userId, out bool isAdmin)
     {
