@@ -7,7 +7,6 @@ using OrderService.Application.Orders.Commands.CreateOrder;
 using OrderService.Application.Orders.Common;
 using OrderService.Application.Orders.Queries.GetOrderById;
 using OrderService.Application.Orders.Queries.GetOrders;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace OrderService.Api.Controllers;
@@ -115,7 +114,7 @@ public class OrdersController : ControllerBase
         isAdmin = false;
 
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                  ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+          ?? User.FindFirstValue("sub");
 
         if (!Guid.TryParse(sub, out userId))
             return false;
