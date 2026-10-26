@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrderService.Application.Orders.Commands.CancelOrder;
+using OrderService.Application.Orders.Commands.CompleteOrder;
 using OrderService.Application.Orders.Commands.CreateOrder;
 using OrderService.Application.Orders.Common;
 using OrderService.Application.Orders.Queries.GetOrderById;
@@ -63,6 +64,28 @@ public class OrdersController : ControllerBase
         var command = new CreateOrderCommand(userId, body.Items);
         var id = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(GetById), new { id }, id);
+    }
+
+    /// <summary>Завершить заказ (Confirmed → Done). Только владелец или админ.</summary>
+    /// <response code="204">Заказ завершён.</response>
+    /// <response code="400">Заказ не найден, не принадлежит пользователю или в неверном статусе.</response>
+    /// <response code="401">Токен отсутствует или невалиден.</response>
+    [Authorize]
+    [HttpPost("{id:guid}/complete")]
+    public async Task<IActionResult> Complete(Guid id, CancellationToken ct)
+    {
+        if (!TryGetCurrentUser(out var userId, out var isAdmin))
+            return Unauthorized(new { error = "Invalid user identifier in token." });
+
+        try
+        {
+            await _mediator.Send(new CompleteOrderCommand(id, userId, isAdmin), ct);
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     /// <summary>Отменить заказ и снять резерв в InventoryService.</summary>
