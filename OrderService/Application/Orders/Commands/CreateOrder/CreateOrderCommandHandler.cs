@@ -1,4 +1,6 @@
-﻿using MediatR;
+﻿using MassTransit;
+using MediatR;
+using OrderService.Application.Orders.Events;
 using OrderService.Application.Orders.Services;
 using OrderService.Domain.Entities;
 using OrderService.Domain.Enums;
@@ -10,11 +12,13 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
 {
     private readonly OrderDbContext _db;
     private readonly IInventoryService _inventory;
+    private readonly IPublishEndpoint _publishEndpoint;
 
-    public CreateOrderCommandHandler(OrderDbContext db, IInventoryService inventory)
+    public CreateOrderCommandHandler(OrderDbContext db, IInventoryService inventory, IPublishEndpoint publishEndpoint)
     {
         _db = db;
         _inventory = inventory;
+        _publishEndpoint = publishEndpoint;
     }
 
     public async Task<Guid> Handle(CreateOrderCommand request, CancellationToken ct)
@@ -80,6 +84,11 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         try
         {
             await _db.SaveChangesAsync(ct);
+            await _publishEndpoint.Publish(new OrderCreatedEvent(
+                order.Id,
+                order.CustomerId,
+                order.TotalAmount,
+                order.CreatedAt), ct);
         }
         catch
         {
